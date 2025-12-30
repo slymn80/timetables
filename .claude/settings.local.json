@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershel.exe \"netstat -ano | Select-String '':8001'' | ForEach-Object { $_-match ''\\s+(\\d+)$'' | Out-Null; Stop-Process -Id $matches[1] -Force -ErrorAction SilentlyContinue }\")",
+      "Bash(python -m uvicorn:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell \"Stop-Process -Id 18288 -Force\")",
+      "Bash(python:*)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(curl:*)",
+      "Bash(timeout /t 3)",
+      "Bash(powershell \"Start-Sleep -Seconds 3; curl.exe -X GET ''http://localhost:8000/api/v1/timetables/10/statistics'' -H ''accept: application/json''\")",
+      "Bash(powershell \"ConvertFrom-Json | Select-Object -ExpandProperty timetables | Select-Object id, name | ConvertTo-Json\")",
+      "Bash(powershell:*)",
+      "Bash(timeout /t 5)",
+      "Bash(sqlite3:*)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\Suleyman\\\\claude-projects\\\\timetables\\\\frontend\\\\src\")",
+      "Bash(TEMPLATE_ID=\"d4b093f2-3e97-464c-99bd-0da57b4aec6b\")",
+      "Bash(for day in 1 2 3 4 5)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(timeout /t 10)",
+      "Bash(cat:*)",
+      "Bash(timeout:*)",
+      "Bash(dir:*)",
+      "Bash(powershel \"Start-Sleep -Seconds 3; python test_api.py\")",
+      "WebSearch",
+      "Bash(pip install:*)",
+      "Bash(Select-String -Pattern \"zaman dilimi|SONUC|Tamamlanma|slot|BASARI|BASARISIZ\" -Context 0,2)",
+      "Bash(del /f check_*.py test_*.py fix_*.py debug_*.py analyze_*.py optimize_*.py verify_*.py trigger_*.py reset_*.py get_*.py set_*.py add_*.py auto_*.py FINAL_TEST_RESULTS_42_TEACHERS.md SCHEDULING_ALGORITHM.md TEST_RESULTS*.md logo.png logo_sutet.jpg C*.json)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,8 @@
+name,short_name,room_type,capacity
+Sınıf 101,101,classroom,35
+Sınıf 102,102,classroom,35
+Sınıf 103,103,classroom,35
+Fizik Laboratuvarı,FİZLAB,lab,30
+Kimya Laboratuvarı,KİMLAB,lab,30
+Biyoloji Laboratuvarı,BİYLAB,lab,30
+Spor Salonu,SALON,gym,100

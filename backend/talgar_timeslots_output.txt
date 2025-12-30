@@ -1,0 +1,57 @@
+2025-12-30 17:43:26,882 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-30 17:43:26,882 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("schools")
+2025-12-30 17:43:26,882 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,883 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2025-12-30 17:43:26,883 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,884 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("teachers")
+2025-12-30 17:43:26,884 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,885 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("classes")
+2025-12-30 17:43:26,887 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,887 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("subjects")
+2025-12-30 17:43:26,887 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,888 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("rooms")
+2025-12-30 17:43:26,888 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,889 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("time_slots")
+2025-12-30 17:43:26,889 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,889 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("time_slot_templates")
+2025-12-30 17:43:26,889 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,890 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("lessons")
+2025-12-30 17:43:26,890 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,890 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("lesson_groups")
+2025-12-30 17:43:26,890 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,891 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("timetables")
+2025-12-30 17:43:26,891 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,891 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("timetable_entries")
+2025-12-30 17:43:26,891 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,892 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("constraint_violations")
+2025-12-30 17:43:26,892 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,892 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("academic_years")
+2025-12-30 17:43:26,892 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,893 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("holidays")
+2025-12-30 17:43:26,893 INFO sqlalchemy.engine.Engine [raw sql] ()
+2025-12-30 17:43:26,894 INFO sqlalchemy.engine.Engine COMMIT
+Talgar okulunu ariyorum...
+2025-12-30 17:43:26,896 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2025-12-30 17:43:26,937 INFO sqlalchemy.engine.Engine SELECT schools.name, schools.short_name, schools.code, schools.principal_name, schools.deputy_principal_name, schools.school_type, schools.education_type, schools.logo, schools.address, schools.phone, schools.email, schools.website, schools.timezone, schools.academic_year, schools.settings, schools.is_active, schools.id, schools.created_at, schools.updated_at 
+FROM schools 
+WHERE schools.name LIKE ?
+2025-12-30 17:43:26,938 INFO sqlalchemy.engine.Engine [generated in 0.00020s] ('%algar%',)
+
+Okul bulundu: Özel Talgar 1 Nolu Yatýlý Lisesi (ID: 133ebcbc-bf3c-46a5-a570-bbbf15aaf4b9)
+2025-12-30 17:43:26,940 INFO sqlalchemy.engine.Engine SELECT time_slots.school_id, time_slots.template_id, time_slots.day, time_slots.period_number, time_slots.start_time, time_slots.end_time, time_slots.is_break, time_slots.label, time_slots.is_active, time_slots.id, time_slots.created_at, time_slots.updated_at 
+FROM time_slots 
+WHERE time_slots.school_id = ? ORDER BY time_slots.day, time_slots.period_number
+2025-12-30 17:43:26,941 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ('133ebcbc-bf3c-46a5-a570-bbbf15aaf4b9',)
+Toplam 359 time slot bulundu
+
+
+================================================================================
+OZET:
+================================================================================
+Toplam slot sayisi: 359
+Toplam DERS slot: 193
+Toplam ARA slot: 166
+
+Haftalik kullanilabilir ders slotu: 193
+================================================================================
+2025-12-30 17:43:26,946 INFO sqlalchemy.engine.Engine ROLLBACK
