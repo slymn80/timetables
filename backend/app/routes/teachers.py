@@ -89,7 +89,11 @@ async def list_teachers(
     db: AsyncSession = Depends(get_db)
 ):
     """List all teachers, optionally filtered by school"""
-    query = select(Teacher).where(Teacher.is_active == True)
+    from sqlalchemy.orm import selectinload
+
+    query = select(Teacher).where(Teacher.is_active == True).options(
+        selectinload(Teacher.homeroom_classes)
+    )
 
     if school_id:
         query = query.where(Teacher.school_id == school_id)
@@ -128,6 +132,14 @@ async def list_teachers(
                 "default_room_id": str(teacher.default_room_id) if teacher.default_room_id else None,
                 "color_code": teacher.color_code,
                 "unavailable_slots": teacher.unavailable_slots or {},
+                "homeroom_classes": [
+                    {
+                        "id": str(c.id),
+                        "name": c.name,
+                        "short_name": c.short_name,
+                    }
+                    for c in teacher.homeroom_classes
+                ] if teacher.homeroom_classes else [],
                 "is_active": teacher.is_active,
                 "created_at": teacher.created_at.isoformat() if teacher.created_at else None,
                 "updated_at": teacher.updated_at.isoformat() if teacher.updated_at else None,

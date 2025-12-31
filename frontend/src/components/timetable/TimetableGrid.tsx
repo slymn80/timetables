@@ -785,37 +785,42 @@ export default function TimetableGrid({ timetableId, filterType, filterEntityId 
       );
       if (!confirmSwap) return;
 
-      // Check if we can swap (target entries should also be consecutive from same lesson if multiple)
-      if (targetEntries.length !== entriesToMove.length) {
-        alert('Can only swap with equal number of consecutive slots');
-        return;
-      }
-
       // Check reverse conflicts (target entries moving to source slots)
-      for (let i = 0; i < targetEntries.length; i++) {
-        const targetEntry = targetEntries[i];
-        const sourceSlotId = currentSlots[i];
+      // Each target entry needs to fit into at least one source slot
+      for (const targetEntry of targetEntries) {
+        let canPlaceInAnySource = false;
 
-        const conflictCheck = hasConflict(targetEntry, sourceSlotId);
-        if (conflictCheck.hasConflict) {
-          alert(`Cannot swap: ${conflictCheck.reason}`);
+        for (const sourceSlotId of currentSlots) {
+          const conflictCheck = hasConflict(targetEntry, sourceSlotId);
+          if (!conflictCheck.hasConflict) {
+            canPlaceInAnySource = true;
+            break;
+          }
+        }
+
+        if (!canPlaceInAnySource) {
+          alert(`Cannot swap: Some entries from target slot have conflicts with source slots`);
           return;
         }
       }
 
       // Perform swap in UI immediately (optimistic update)
+      // Strategy: Each source entry goes to corresponding target slot (or first if fewer targets)
+      // Each target entry goes to corresponding source slot (or first if fewer sources)
       setEntries((prev) =>
         prev.map((entry) => {
           // Move source entries to target slots
           const sourceIndex = entriesToMove.findIndex((e) => e.id === entry.id);
           if (sourceIndex !== -1) {
-            return { ...entry, time_slot_id: targetSlots[sourceIndex] };
+            const targetSlotIndex = Math.min(sourceIndex, targetSlots.length - 1);
+            return { ...entry, time_slot_id: targetSlots[targetSlotIndex] };
           }
 
           // Move target entries to source slots
           const targetIndex = targetEntries.findIndex((e) => e.id === entry.id);
           if (targetIndex !== -1) {
-            return { ...entry, time_slot_id: currentSlots[targetIndex] };
+            const sourceSlotIndex = Math.min(targetIndex, currentSlots.length - 1);
+            return { ...entry, time_slot_id: currentSlots[sourceSlotIndex] };
           }
 
           return entry;
@@ -826,15 +831,26 @@ export default function TimetableGrid({ timetableId, filterType, filterEntityId 
 
       // Call backend API to persist swap
       try {
+        // Build the actual moves for each entry
+        const allMoves = [
+          ...entriesToMove.map((entry, i) => ({
+            entry_id: entry.id,
+            target_slot_id: targetSlots[Math.min(i, targetSlots.length - 1)],
+          })),
+          ...targetEntries.map((entry, i) => ({
+            entry_id: entry.id,
+            target_slot_id: currentSlots[Math.min(i, currentSlots.length - 1)],
+          })),
+        ];
+
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'}/api/v1/timetables/${timetableId}/entries/move`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              entry_ids: entriesToMove.map((e) => e.id),
-              target_slot_ids: targetSlots,
-              swap_with_entry_ids: targetEntries.map((e) => e.id),
+              entry_ids: allMoves.map(m => m.entry_id),
+              target_slot_ids: allMoves.map(m => m.target_slot_id),
             }),
           }
         );
@@ -850,12 +866,12 @@ export default function TimetableGrid({ timetableId, filterType, filterEntityId 
           movedEntries: entriesToMove.map((entry, i) => ({
             entryId: entry.id,
             fromSlotId: currentSlots[i],
-            toSlotId: targetSlots[i],
+            toSlotId: targetSlots[Math.min(i, targetSlots.length - 1)],
           })),
           swappedEntries: targetEntries.map((entry, i) => ({
             entryId: entry.id,
             fromSlotId: targetSlots[i],
-            toSlotId: currentSlots[i],
+            toSlotId: currentSlots[Math.min(i, currentSlots.length - 1)],
           })),
         });
       } catch (error) {

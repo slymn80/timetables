@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Printer, Edit3, AlertCircle, BarChart3, CheckCircle, XCircle, Clock } from 'lucide-react';
 import Card from '../components/common/Card';
@@ -60,7 +60,7 @@ export default function TimetableView() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [entities, setEntities] = useState<{ id: string; name: string }[]>([]);
+  const [entities, setEntities] = useState<{ id: string; name: string; homeroom_teacher?: string; homeroom_classes?: string[] }[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showViolations, setShowViolations] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
@@ -135,6 +135,7 @@ export default function TimetableView() {
         const entityList = classList.map((c: any) => ({
           id: c.id,
           name: c.name,
+          homeroom_teacher: c.homeroom_teacher ? `${c.homeroom_teacher.first_name} ${c.homeroom_teacher.last_name}` : undefined,
         }));
         setEntities(entityList);
         if (entityList.length > 0) {
@@ -146,6 +147,7 @@ export default function TimetableView() {
         const entityList = teacherList.map((t: any) => ({
           id: t.id,
           name: t.full_name || t.short_name || 'Unknown Teacher',
+          homeroom_classes: t.homeroom_classes ? t.homeroom_classes.map((c: any) => c.name) : [],
         }));
         setEntities(entityList);
         if (entityList.length > 0) {
@@ -198,6 +200,12 @@ export default function TimetableView() {
   };
 
   const filteredEntries = getEntriesForEntity();
+
+  // Calculate total unique hours (unique time slots)
+  const totalHours = React.useMemo(() => {
+    const uniqueSlots = new Set(filteredEntries.map(entry => entry.time_slot_id));
+    return uniqueSlots.size;
+  }, [filteredEntries]);
 
   const getEntries = (day: string, period: number) => {
     return filteredEntries.filter((entry) =>
@@ -299,43 +307,73 @@ export default function TimetableView() {
             </div>
 
             {/* View Type Toggle and Entity Selector for Edit Mode */}
-            <div className="mb-4 flex items-center gap-4">
-              <div className="flex border border-gray-300 rounded-md overflow-hidden">
-                <button
-                  onClick={() => setViewType('class')}
-                  className={`px-4 py-2 font-medium text-sm transition-colors ${
-                    viewType === 'class'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Class View
-                </button>
-                <button
-                  onClick={() => setViewType('teacher')}
-                  className={`px-4 py-2 font-medium text-sm transition-colors ${
-                    viewType === 'teacher'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Teacher View
-                </button>
+            <div className="mb-4 space-y-3">
+              <div className="flex items-center gap-4">
+                <div className="flex border border-gray-300 rounded-md overflow-hidden">
+                  <button
+                    onClick={() => setViewType('class')}
+                    className={`px-4 py-2 font-medium text-sm transition-colors ${
+                      viewType === 'class'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Class View
+                  </button>
+                  <button
+                    onClick={() => setViewType('teacher')}
+                    className={`px-4 py-2 font-medium text-sm transition-colors ${
+                      viewType === 'teacher'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Teacher View
+                  </button>
+                </div>
+
+                <div className="flex-1">
+                  <select
+                    value={selectedEntity}
+                    onChange={(e) => setSelectedEntity(e.target.value)}
+                    className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {entities.map((entity) => (
+                      <option key={entity.id} value={entity.id}>
+                        {entity.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div className="flex-1">
-                <select
-                  value={selectedEntity}
-                  onChange={(e) => setSelectedEntity(e.target.value)}
-                  className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {entities.map((entity) => (
-                    <option key={entity.id} value={entity.id}>
-                      {entity.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Info Banner for Edit Mode */}
+              {selectedEntity && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-blue-900">
+                          {entities.find(e => e.id === selectedEntity)?.name}
+                        </span>
+                      </div>
+                      <div className="text-xs text-blue-700">
+                        <span className="font-medium">Total Hours:</span> {totalHours}
+                      </div>
+                      {viewType === 'class' && entities.find(e => e.id === selectedEntity)?.homeroom_teacher && (
+                        <div className="text-xs text-blue-700">
+                          <span className="font-medium">Homeroom Teacher:</span> {entities.find(e => e.id === selectedEntity)?.homeroom_teacher}
+                        </div>
+                      )}
+                      {viewType === 'teacher' && entities.find(e => e.id === selectedEntity)?.homeroom_classes && entities.find(e => e.id === selectedEntity)!.homeroom_classes!.length > 0 && (
+                        <div className="text-xs text-blue-700">
+                          <span className="font-medium">Homeroom Class{entities.find(e => e.id === selectedEntity)!.homeroom_classes!.length > 1 ? 'es' : ''}:</span> {entities.find(e => e.id === selectedEntity)?.homeroom_classes?.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <TimetableGrid
@@ -371,22 +409,52 @@ export default function TimetableView() {
             </button>
           </div>
 
-        {/* Entity Selector */}
-        <div className="p-4 border-b border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select {viewType === 'class' ? 'Class' : 'Teacher'}
-          </label>
-          <select
-            value={selectedEntity}
-            onChange={(e) => setSelectedEntity(e.target.value)}
-            className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            {entities.map((entity) => (
-              <option key={entity.id} value={entity.id}>
-                {entity.name}
-              </option>
-            ))}
-          </select>
+        {/* Entity Selector with Info */}
+        <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select {viewType === 'class' ? 'Class' : 'Teacher'}
+              </label>
+              <select
+                value={selectedEntity}
+                onChange={(e) => setSelectedEntity(e.target.value)}
+                className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                {entities.map((entity) => (
+                  <option key={entity.id} value={entity.id}>
+                    {entity.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Info Banner */}
+            {selectedEntity && (
+              <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-blue-900">
+                      {entities.find(e => e.id === selectedEntity)?.name}
+                    </span>
+                  </div>
+                  <div className="text-xs text-blue-700">
+                    <span className="font-medium">Total Hours:</span> {totalHours}
+                  </div>
+                  {viewType === 'class' && entities.find(e => e.id === selectedEntity)?.homeroom_teacher && (
+                    <div className="text-xs text-blue-700">
+                      <span className="font-medium">Homeroom Teacher:</span> {entities.find(e => e.id === selectedEntity)?.homeroom_teacher}
+                    </div>
+                  )}
+                  {viewType === 'teacher' && entities.find(e => e.id === selectedEntity)?.homeroom_classes && entities.find(e => e.id === selectedEntity)!.homeroom_classes!.length > 0 && (
+                    <div className="text-xs text-blue-700">
+                      <span className="font-medium">Homeroom Class{entities.find(e => e.id === selectedEntity)!.homeroom_classes!.length > 1 ? 'es' : ''}:</span> {entities.find(e => e.id === selectedEntity)?.homeroom_classes?.join(', ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Timetable Grid */}

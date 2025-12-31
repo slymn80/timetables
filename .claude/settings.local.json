@@ -45,7 +45,11 @@
       "Bash(cmd /c \"taskkill /F /PID 22764 && taskkill /F /PID 12472\")",
       "Bash(cmd /c \"taskkill /F /PID 12472 && taskkill /F /PID 22764\")",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git restore:*)",
+      "Bash(cmd /c \"taskkill /F /PID 22764 && taskkill /F /PID 25436 && taskkill /F /PID 12472\")",
+      "Bash(cmd /c taskkill /F /T /PID 22764)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": []

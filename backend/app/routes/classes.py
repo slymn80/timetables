@@ -52,7 +52,11 @@ async def list_classes(
     db: AsyncSession = Depends(get_db)
 ):
     """List all classes, optionally filtered by school"""
-    query = select(Class).where(Class.is_active == True)
+    from sqlalchemy.orm import joinedload
+
+    query = select(Class).where(Class.is_active == True).options(
+        joinedload(Class.homeroom_teacher)
+    )
 
     if school_id:
         query = query.where(Class.school_id == school_id)
@@ -74,6 +78,12 @@ async def list_classes(
                 "student_count": c.student_count,
                 "max_hours_per_day": c.max_hours_per_day,
                 "homeroom_teacher_id": str(c.homeroom_teacher_id) if c.homeroom_teacher_id else None,
+                "homeroom_teacher": {
+                    "id": str(c.homeroom_teacher.id),
+                    "first_name": c.homeroom_teacher.first_name,
+                    "last_name": c.homeroom_teacher.last_name,
+                    "short_name": c.homeroom_teacher.short_name,
+                } if c.homeroom_teacher else None,
                 "default_room_id": str(c.default_room_id) if c.default_room_id else None,
                 "color_code": c.color_code,
                 "unavailable_slots": c.unavailable_slots or {},
