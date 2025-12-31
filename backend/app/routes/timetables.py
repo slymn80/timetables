@@ -4,7 +4,7 @@ Timetables API routes
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from uuid import UUID
 from datetime import datetime, timezone
 from pydantic import BaseModel
@@ -431,7 +431,7 @@ async def update_timetable(
 
 
 @router.get("/{timetable_id}/entries/")
-async def get_timetable_entries(
+async def get_timetable_entries_detailed(
     timetable_id: UUID,
     db: AsyncSession = Depends(get_db)
 ):
@@ -550,6 +550,159 @@ async def get_timetable_entries(
         "timetable_id": str(timetable_id),
         "total": len(entries_data),
         "entries": entries_data
+    }
+
+
+class BulkEntriesCreate(BaseModel):
+    """Bulk timetable entries creation request"""
+    entries: list[dict]
+
+
+@router.get("/{timetable_id}/entries")
+async def get_timetable_entries(
+    timetable_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all entries for a timetable"""
+    # Verify timetable exists
+    timetable_query = select(Timetable).where(Timetable.id == timetable_id)
+    timetable_result = await db.execute(timetable_query)
+    timetable = timetable_result.scalar_one_or_none()
+
+    if not timetable:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Timetable with id {timetable_id} not found"
+        )
+
+    # Get all entries with relationships
+    entries_query = (
+        select(TimetableEntry)
+        .where(TimetableEntry.timetable_id == timetable_id)
+        .options(
+            joinedload(TimetableEntry.time_slot),
+            joinedload(TimetableEntry.lesson).joinedload(Lesson.class_),
+            joinedload(TimetableEntry.lesson).joinedload(Lesson.subject),
+            joinedload(TimetableEntry.lesson).joinedload(Lesson.teacher),
+            joinedload(TimetableEntry.lesson_group).joinedload(LessonGroup.teacher),
+            joinedload(TimetableEntry.room)
+        )
+    )
+    entries_result = await db.execute(entries_query)
+    entries = entries_result.scalars().all()
+
+    return {"entries": [
+        {
+            "id": str(entry.id),
+            "time_slot_id": str(entry.time_slot_id),
+            "lesson_id": str(entry.lesson_id) if entry.lesson_id else None,
+            "room_id": str(entry.room_id) if entry.room_id else None,
+            "lesson_group_id": str(entry.lesson_group_id) if entry.lesson_group_id else None,
+            # Add class_id and teacher_id - use lesson_group.teacher if available, otherwise lesson.teacher
+            "class_id": str(entry.lesson.class_id) if entry.lesson and entry.lesson.class_id else None,
+            "teacher_id": str(entry.lesson_group.teacher_id) if entry.lesson_group and entry.lesson_group.teacher_id else (str(entry.lesson.teacher_id) if entry.lesson and entry.lesson.teacher_id else None),
+            "subject_id": str(entry.lesson.subject_id) if entry.lesson and entry.lesson.subject_id else None,
+            # Add names for display
+            "class_name": entry.lesson.class_.name if entry.lesson and entry.lesson.class_ else None,
+            "subject_name": entry.lesson.subject.name if entry.lesson and entry.lesson.subject else None,
+            "teacher_name": f"{entry.lesson_group.teacher.first_name} {entry.lesson_group.teacher.last_name}" if entry.lesson_group and entry.lesson_group.teacher else (f"{entry.lesson.teacher.first_name} {entry.lesson.teacher.last_name}" if entry.lesson and entry.lesson.teacher else None),
+            "teacher_short_name": entry.lesson_group.teacher.short_name if entry.lesson_group and entry.lesson_group.teacher else (entry.lesson.teacher.short_name if entry.lesson and entry.lesson.teacher else None),
+            "lesson_group_name": entry.lesson_group.group_name if entry.lesson_group else None,
+            "subject_short_code": entry.lesson.subject.short_code if entry.lesson and entry.lesson.subject else None,
+            "subject_color": entry.lesson.subject.color_code if entry.lesson and entry.lesson.subject else None,
+            "class_color": entry.lesson.class_.color_code if entry.lesson and entry.lesson.class_ else None,
+            "time_slot": {
+                "id": str(entry.time_slot.id),
+                "day": entry.time_slot.day,
+                "period_number": entry.time_slot.period_number,
+                "start_time": str(entry.time_slot.start_time),
+                "end_time": str(entry.time_slot.end_time)
+            } if entry.time_slot else None
+        }
+        for entry in entries
+    ]}
+
+
+@router.post("/{timetable_id}/entries")
+async def create_bulk_entries(
+    timetable_id: UUID,
+    data: BulkEntriesCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Create multiple timetable entries at once (for manual editing)"""
+    # Verify timetable exists
+    timetable_query = select(Timetable).where(Timetable.id == timetable_id)
+    timetable_result = await db.execute(timetable_query)
+    timetable = timetable_result.scalar_one_or_none()
+
+    if not timetable:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Timetable with id {timetable_id} not found"
+        )
+
+    # Delete all existing entries for this timetable
+    delete_entries_query = delete(TimetableEntry).where(
+        TimetableEntry.timetable_id == timetable_id
+    )
+    await db.execute(delete_entries_query)
+
+    # Create new entries
+    created_entries = []
+    for entry_data in data.entries:
+        entry = TimetableEntry(
+            timetable_id=timetable_id,
+            time_slot_id=UUID(entry_data['time_slot_id']),
+            lesson_id=UUID(entry_data['lesson_id']) if entry_data.get('lesson_id') else None,
+            lesson_group_id=UUID(entry_data['lesson_group_id']) if entry_data.get('lesson_group_id') else None,
+            room_id=UUID(entry_data['room_id']) if entry_data.get('room_id') else None,
+        )
+        db.add(entry)
+        created_entries.append(entry)
+
+    # Update timetable status
+    timetable.status = TimetableStatus.DRAFT
+
+    await db.commit()
+
+    return {
+        "message": f"Successfully created {len(created_entries)} timetable entries",
+        "total_entries": len(created_entries),
+        "timetable_id": str(timetable_id)
+    }
+
+
+@router.delete("/bulk/all")
+async def delete_all_timetables(
+    school_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete all timetables for a school (hard delete - removes from database)"""
+    # Get all timetable IDs for this school
+    timetables_query = select(Timetable.id).where(Timetable.school_id == school_id)
+    result = await db.execute(timetables_query)
+    timetable_ids = [row[0] for row in result.all()]
+
+    if not timetable_ids:
+        return {"message": "No timetables found to delete", "deleted_count": 0}
+
+    # Delete all timetable entries for these timetables
+    delete_entries_query = delete(TimetableEntry).where(
+        TimetableEntry.timetable_id.in_(timetable_ids)
+    )
+    await db.execute(delete_entries_query)
+
+    # Delete all timetables for this school
+    delete_timetables_query = delete(Timetable).where(
+        Timetable.school_id == school_id
+    )
+    result = await db.execute(delete_timetables_query)
+
+    await db.commit()
+
+    return {
+        "message": f"Successfully deleted {result.rowcount} timetable(s)",
+        "deleted_count": result.rowcount
     }
 
 

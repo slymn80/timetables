@@ -106,12 +106,13 @@ export const timetableService = {
   getAll: (schoolId?: string) =>
     api.get<Timetable[]>('/timetables/', { params: { school_id: schoolId } }),
   getById: (id: string) => api.get<Timetable>(`/timetables/${id}`),
-  getEntries: (id: string) => api.get(`/timetables/${id}/entries`),
+  getEntries: (id: string) => api.get(`/timetables/${id}/entries/`),
   getStatistics: (id: string) => api.get(`/timetables/${id}/statistics`),
   create: (data: Partial<Timetable>) => api.post<Timetable>('/timetables/', data),
   update: (id: string, data: Partial<Timetable>) =>
     api.put<Timetable>(`/timetables/${id}`, data),
   delete: (id: string) => api.delete(`/timetables/${id}`),
+  deleteAll: (schoolId: string) => api.delete(`/timetables/bulk/all?school_id=${schoolId}`),
   generate: (id: string) => api.post(`/timetables/${id}/generate`),
 };
 

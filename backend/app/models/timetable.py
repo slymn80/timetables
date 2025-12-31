@@ -24,6 +24,7 @@ class AlgorithmType(str, enum.Enum):
     SIMULATED_ANNEALING = "simulated_annealing"
     HYBRID = "hybrid"
     CPSAT = "cpsat"
+    MANUAL = "manual"
 
 
 class ConstraintSeverity(str, enum.Enum):

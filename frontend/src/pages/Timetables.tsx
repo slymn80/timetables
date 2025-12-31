@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Play, FileText } from 'lucide-react';
+import { Plus, Eye, Trash2, Play, FileText, Edit } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import TimetableForm from '../components/common/TimetableForm';
@@ -45,28 +45,26 @@ export default function Timetables() {
     navigate(`/timetables/${timetableId}`);
   };
 
+  const handleEdit = (timetableId: string) => {
+    navigate(`/timetables/${timetableId}/manual-edit`);
+  };
+
   const handleCreateEmpty = async () => {
     try {
-      // Get available schools to use the first one
-      const schoolsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/schools/`);
-      const schoolsData = await schoolsResponse.json();
-
-      if (!schoolsData.schools || schoolsData.schools.length === 0) {
-        alert('No schools found. Please create a school first.');
+      if (!selectedSchoolId) {
+        alert('Please select a school first.');
         return;
       }
 
-      const firstSchoolId = schoolsData.schools[0].id;
-
       // Create a minimal timetable with default values
       const response = await timetableService.create({
-        school_id: firstSchoolId,
-        name: `Empty Timetable - ${new Date().toLocaleString('tr-TR')}`,
-        algorithm: 'greedy',
+        school_id: selectedSchoolId,
+        name: `Manual Timetable - ${new Date().toLocaleString('tr-TR')}`,
+        algorithm: 'manual',
       });
 
-      // Navigate directly to the timetable in edit mode
-      navigate(`/timetables/${response.id}?edit=true`);
+      // Navigate directly to the manual editor
+      navigate(`/timetables/${response.id}/manual-edit`);
     } catch (error: any) {
       console.error('Failed to create empty timetable:', error);
       const errorMessage = error.response?.data?.detail || 'Failed to create empty timetable';
@@ -107,6 +105,39 @@ export default function Timetables() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!selectedSchoolId) {
+      alert('Please select a school first');
+      return;
+    }
+
+    if (timetables.length === 0) {
+      alert('No timetables to delete');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete ALL ${timetables.length} timetable(s)?\n\nThis action cannot be undone!`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    // Double confirmation for safety
+    const doubleConfirm = window.confirm('This will permanently delete all timetables. Are you absolutely sure?');
+    if (!doubleConfirm) {
+      return;
+    }
+
+    try {
+      const result = await timetableService.deleteAll(selectedSchoolId);
+      alert(result.message || `Successfully deleted ${result.deleted_count} timetable(s)`);
+      await loadTimetables();
+    } catch (error: any) {
+      console.error('Failed to delete all timetables:', error);
+      const errorMessage = error.response?.data?.detail || 'Failed to delete all timetables';
+      alert(errorMessage);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-800',
@@ -126,6 +157,15 @@ export default function Timetables() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Timetables</h1>
           <div className="flex gap-3">
+          {timetables.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete All ({timetables.length})
+            </button>
+          )}
           <Button
             onClick={handleCreateEmpty}
             variant="secondary"
@@ -180,9 +220,21 @@ export default function Timetables() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {timetables.map((timetable) => (
-                  <tr key={timetable.id} className="hover:bg-gray-50">
+                  <tr
+                    key={timetable.id}
+                    className={`${
+                      timetable.algorithm === 'manual'
+                        ? 'bg-purple-50 hover:bg-purple-100'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {timetable.name}
+                      {timetable.algorithm === 'manual' && (
+                        <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-purple-200 text-purple-800 rounded">
+                          Manual
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {timetable.academic_year || '-'}
@@ -227,15 +279,25 @@ export default function Timetables() {
                       >
                         <Eye className="h-4 w-4 inline" />
                       </button>
-                      {timetable.status === 'draft' && (
+                      {timetable.algorithm === 'manual' ? (
                         <button
-                          onClick={() => handleGenerate(timetable.id)}
-                          disabled={generating === timetable.id}
-                          className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
-                          title="Generate"
+                          onClick={() => handleEdit(timetable.id)}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="Edit Manual Timetable"
                         >
-                          <Play className="h-4 w-4 inline" />
+                          <Edit className="h-4 w-4 inline" />
                         </button>
+                      ) : (
+                        timetable.status === 'draft' && (
+                          <button
+                            onClick={() => handleGenerate(timetable.id)}
+                            disabled={generating === timetable.id}
+                            className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+                            title="Generate"
+                          >
+                            <Play className="h-4 w-4 inline" />
+                          </button>
+                        )
                       )}
                       <button
                         onClick={() => handleDelete(timetable)}

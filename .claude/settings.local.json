@@ -31,7 +31,21 @@
       "Bash(pip install:*)",
       "Bash(Select-String -Pattern \"zaman dilimi|SONUC|Tamamlanma|slot|BASARI|BASARISIZ\" -Context 0,2)",
       "Bash(del /f check_*.py test_*.py fix_*.py debug_*.py analyze_*.py optimize_*.py verify_*.py trigger_*.py reset_*.py get_*.py set_*.py add_*.py auto_*.py FINAL_TEST_RESULTS_42_TEACHERS.md SCHEDULING_ALGORITHM.md TEST_RESULTS*.md logo.png logo_sutet.jpg C*.json)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(del check_slots.py fix_period_numbers.py)",
+      "Bash(curl.exe:*)",
+      "Bash(cmd /c \"taskkill /PID 12204 /F\")",
+      "Bash(del /f check_lesson_groups.py check_lesson_groups_new.py debug_api.py kill_port.py lessons_*.json test_*.json final_*.json port9000_test.json full_8001_test.json)",
+      "Bash(cmd /c force_kill.bat)",
+      "Bash(read:*)",
+      "Bash(cmd /c \"taskkill /PID 22764 /F\")",
+      "Bash(cmd /c \"taskkill /F /PID 22764 && taskkill /F /PID 12472\")",
+      "Bash(cmd /c \"taskkill /F /PID 12472 && taskkill /F /PID 22764\")",
+      "Bash(find:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

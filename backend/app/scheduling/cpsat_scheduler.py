@@ -289,6 +289,96 @@ async def schedule_with_cpsat(
 
     print(f"  OK Ogretmen musait olmayan slotlar: {constraint_count} kisit")
 
+    # CONSTRAINT 5: Class max_hours_per_day
+    # General rule: Compare time_slots max periods vs class max_hours_per_day
+    # If class max < time_slots max, block the LAST periods (end of day)
+    # Example: time_slots has 8 periods, class max=7 -> block period 8
+
+    # Find max period_number in time_slots for each day
+    max_periods_per_day = {}
+    for slot in time_slots:
+        day_str = slot.day.value if hasattr(slot.day, 'value') else slot.day
+        if day_str not in max_periods_per_day:
+            max_periods_per_day[day_str] = 0
+        max_periods_per_day[day_str] = max(max_periods_per_day[day_str], slot.period_number)
+
+    # Log time_slots structure
+    print(f"\n  Time slots structure:")
+    for day, max_p in sorted(max_periods_per_day.items()):
+        print(f"    {day}: {max_p} periods")
+
+    constraint_count = 0
+    for cls in classes:
+        class_max_hours = cls.max_hours_per_day
+        if not class_max_hours:
+            continue  # Skip if no limit set
+
+        # Find global max periods across all days
+        global_max_periods = max(max_periods_per_day.values()) if max_periods_per_day else 8
+
+        # Log comparison
+        if class_max_hours < global_max_periods:
+            print(f"    {cls.name}: max_hours={class_max_hours} < slots_max={global_max_periods} -> blocking periods {class_max_hours+1}-{global_max_periods}")
+
+        # Block all slots where period_number > class_max_hours
+        # This blocks the LAST periods of each day
+        for s_idx, slot in enumerate(time_slots):
+            if slot.period_number > class_max_hours:
+                # This period is beyond the class's allowed hours
+                # Block all lessons for this class in this slot
+                for l_idx, lesson in enumerate(lessons):
+                    if lesson.class_id == cls.id:
+                        groups = lesson_groups_by_lesson.get(lesson.id, [])
+                        if groups:
+                            # For group lessons, use first group (all groups are synced)
+                            model.Add(assign[(l_idx, 0, s_idx)] == 0)
+                            constraint_count += 1
+                        else:
+                            # For non-group lessons
+                            model.Add(assign[(l_idx, None, s_idx)] == 0)
+                            constraint_count += 1
+
+    print(f"  OK Sinif max_hours_per_day kisiti: {constraint_count} kisit")
+
+    # CONSTRAINT 6: Class unavailable slots
+    # Classes cannot have lessons in their unavailable time slots
+    # unavailable_slots format: {"1": [7, 8]} means Monday periods 7 and 8 are blocked
+    constraint_count = 0
+    for cls in classes:
+        if not cls.unavailable_slots:
+            continue
+
+        # Parse unavailable_slots: {"5": [1,2,3], "2": [4,5]}
+        for day_num_str, period_nums in cls.unavailable_slots.items():
+            day_num = int(day_num_str)
+
+            # Find all slots for this day and periods
+            for s_idx, slot in enumerate(time_slots):
+                # Convert day to uppercase for comparison
+                if hasattr(slot.day, 'value'):
+                    slot_day_str = str(slot.day.value).upper()
+                else:
+                    slot_day_str = str(slot.day).upper()
+                slot_day_num = day_number_map.get(slot_day_str, 0)
+
+                # Check if this slot matches unavailable day and period
+                if slot_day_num == day_num and slot.period_number in period_nums:
+                    # Block all lessons for this class in this slot
+                    for l_idx, lesson in enumerate(lessons):
+                        if lesson.class_id == cls.id:
+                            groups = lesson_groups_by_lesson.get(lesson.id, [])
+
+                            if groups:
+                                # For group lessons, use first group (all groups are synced)
+                                model.Add(assign[(l_idx, 0, s_idx)] == 0)
+                                constraint_count += 1
+                            else:
+                                # No groups
+                                model.Add(assign[(l_idx, None, s_idx)] == 0)
+                                constraint_count += 1
+
+    print(f"  OK Sinif musait olmayan slotlar: {constraint_count} kisit")
+
     print("\n  [!] Pattern constraints TEMPORARILY DISABLED - Testing basic CP-SAT only")
 
     # SOLVE

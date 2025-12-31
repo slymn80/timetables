@@ -15,6 +15,7 @@ import LessonGroups from './pages/LessonGroups';
 import TeacherAssignments from './pages/TeacherAssignments';
 import Timetables from './pages/Timetables';
 import TimetableView from './pages/TimetableView';
+import ManualTimetableEditor from './pages/ManualTimetableEditor';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="teacher-assignments" element={<TeacherAssignments />} />
             <Route path="timetables" element={<Timetables />} />
             <Route path="timetables/:id" element={<TimetableView />} />
+            <Route path="timetables/:id/manual-edit" element={<ManualTimetableEditor />} />
           </Route>
         </Routes>
       </BrowserRouter>

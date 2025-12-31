@@ -1,6 +1,7 @@
 """
 Lessons API routes
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,7 +10,7 @@ from uuid import UUID
 import logging
 
 from ..database import get_db
-from ..models.lesson import Lesson
+from ..models.lesson import Lesson, LessonGroup
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ async def list_lessons(
             joinedload(Lesson.class_),
             joinedload(Lesson.subject),
             joinedload(Lesson.teacher),
-            selectinload(Lesson.lesson_groups)
+            selectinload(Lesson.lesson_groups).joinedload(LessonGroup.teacher)
         )
         .where(Lesson.is_active == True)
     )
@@ -49,6 +50,13 @@ async def list_lessons(
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     lessons = result.unique().scalars().all()
+
+    # Debug: Check lesson_groups
+    if lessons:
+        logger.info(f"=== DEBUG: First lesson has {len(lessons[0].lesson_groups or [])} groups ===")
+        if lessons[0].lesson_groups:
+            lg = lessons[0].lesson_groups[0]
+            logger.info(f"First group: id={lg.id}, has teacher attr={hasattr(lg, 'teacher')}, teacher={lg.teacher}")
 
     return {
         "total": len(lessons),
@@ -71,6 +79,9 @@ async def list_lessons(
                         "lesson_id": str(lg.lesson_id),
                         "group_name": lg.group_name,
                         "teacher_id": str(lg.teacher_id) if lg.teacher_id else None,
+                        "teacher_name": lg.teacher.full_name if hasattr(lg, 'teacher') and lg.teacher else None,
+                        "_debug_has_teacher": hasattr(lg, 'teacher'),
+                        "_debug_teacher_is_none": lg.teacher is None if hasattr(lg, 'teacher') else 'no_attr',
                     }
                     for lg in (lesson.lesson_groups or [])
                 ],

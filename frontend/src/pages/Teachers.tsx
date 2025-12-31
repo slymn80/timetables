@@ -154,38 +154,42 @@ export default function Teachers() {
     // Reload to get fresh data
     await loadTeachers();
 
-    const teachersWithFreeDays = teachers.filter(t => {
-      // Check if preferred_free_day exists and is not null/undefined/empty string
-      return t.preferred_free_day &&
-             t.preferred_free_day !== '' &&
-             t.preferred_free_day !== null &&
-             t.preferred_free_day !== undefined;
+    const teachersWithUnavailableSlots = teachers.filter(t => {
+      // Check if unavailable_slots exists and has at least one blocked slot
+      if (!t.unavailable_slots || typeof t.unavailable_slots !== 'object') {
+        return false;
+      }
+      // Check if any day has blocked periods
+      return Object.keys(t.unavailable_slots).some(day => {
+        const periods = t.unavailable_slots![day];
+        return Array.isArray(periods) && periods.length > 0;
+      });
     });
 
-    if (teachersWithFreeDays.length === 0) {
-      alert('Hiçbir öğretmenin tercih edilen boş günü bulunmuyor.\n\nÖğretmen düzenleme formundan "Preferred Free Day" alanını kullanarak öğretmenlere boş gün atayabilirsiniz.');
+    if (teachersWithUnavailableSlots.length === 0) {
+      alert('Hiçbir öğretmenin kapatılmış saati bulunmuyor.\n\nÖğretmen düzenleme formundan zaman dilimlerini kapatabilirsiniz.');
       return;
     }
 
     const confirmed = window.confirm(
-      `${teachersWithFreeDays.length} öğretmenin tercih edilen boş günü iptal edilecek. Devam etmek istiyor musunuz?`
+      `${teachersWithUnavailableSlots.length} öğretmenin kapatılmış tüm saatleri açılacak. Devam etmek istiyor musunuz?`
     );
 
     if (!confirmed) return;
 
     try {
-      // Update all teachers to remove preferred_free_day
+      // Update all teachers to clear unavailable_slots
       await Promise.all(
-        teachersWithFreeDays.map(teacher =>
-          teacherService.update(teacher.id, { preferred_free_day: null })
+        teachersWithUnavailableSlots.map(teacher =>
+          teacherService.update(teacher.id, { unavailable_slots: {} })
         )
       );
 
       await loadTeachers();
-      alert(`${teachersWithFreeDays.length} öğretmenin tercih edilen boş günü başarıyla iptal edildi.`);
+      alert(`${teachersWithUnavailableSlots.length} öğretmenin kapatılmış saatleri başarıyla açıldı.`);
     } catch (error) {
-      console.error('Failed to clear preferred free days:', error);
-      alert('Tercih edilen boş günleri iptal etme işlemi başarısız oldu.');
+      console.error('Failed to clear unavailable slots:', error);
+      alert('Kapatılmış saatleri açma işlemi başarısız oldu.');
     }
   };
 
@@ -203,7 +207,7 @@ export default function Teachers() {
             className="border-red-300 text-red-700 hover:bg-red-50"
           >
             <XCircle className="mr-2 h-4 w-4" />
-            Tüm Boş Günleri İptal Et
+            Tüm Boş Saatleri Kaldır
           </Button>
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" />

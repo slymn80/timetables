@@ -71,34 +71,26 @@ export default function LessonGroups() {
       const response = await lessonService.getAll(selectedSchoolId!);
       const allLessons = response.lessons || [];
 
-      // Group lessons by class_id + subject_id
-      const groupedMap = new Map<string, any>();
-
-      allLessons
+      // Filter lessons by subject and map to expected format
+      const filteredLessons = allLessons
         .filter((l: any) => l.subject_id === subjectId)
-        .forEach((l: any) => {
-          const key = `${l.class_id}_${l.subject_id}`;
-          if (!groupedMap.has(key)) {
-            groupedMap.set(key, {
-              id: l.id, // Use first lesson's ID as representative
-              class_id: l.class_id,
-              class_name: l.class_name || 'Unknown',
-              subject_id: l.subject_id,
-              subject_name: l.subject_name || 'Unknown',
-              hours_per_week: l.hours_per_week || 0,
-              num_groups: l.num_groups || 1, // Use the lesson's num_groups field
-              group_lessons: [], // Array to hold all group lesson records
-            });
-          }
-          // Add this lesson to the group
-          groupedMap.get(key).group_lessons.push({
-            id: l.id,
-            teacher_id: l.teacher_id || null,
-            teacher_name: l.teacher_name || null,
-          });
-        });
+        .map((l: any) => ({
+          id: l.id,
+          class_id: l.class_id,
+          class_name: l.class_name || 'Unknown',
+          subject_id: l.subject_id,
+          subject_name: l.subject_name || 'Unknown',
+          hours_per_week: l.hours_per_week || 0,
+          num_groups: l.num_groups || 1,
+          // Use lesson_groups from backend (new approach)
+          group_lessons: (l.lesson_groups || []).map((lg: any) => ({
+            id: lg.id,
+            teacher_id: lg.teacher_id || null,
+            teacher_name: lg.teacher_name || null,
+          })),
+        }));
 
-      setLessons(Array.from(groupedMap.values()));
+      setLessons(filteredLessons);
     } catch (error) {
       console.error('Failed to load lessons:', error);
     }
